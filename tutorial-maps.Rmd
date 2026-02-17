@@ -1,0 +1,314 @@
+---
+title: "Mapping Countries and Regions in R"
+author: "Clara Bicalho and Valeria Gracia Olvera"
+date: "2026-02-16"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: tango
+    theme: paper
+---
+
+# Introduction
+
+This short tutorial shows you how to:
+
+1.  Plot the polygon (or borders) of a country.
+2.  Plot subnational administrative regions (e.g., states or municipalities).
+3.  Add points to a map using specific geographic coordinates.
+4.  Shade regions based on a given statistic.
+
+We will use the `sf`, `rnaturalearth`, `dplyr`, and `ggplot2` packages.
+
+```{r setup, message=FALSE, warning=FALSE}
+# Install packages if needed
+# install.packages(c("sf", "rnaturalearth", "rnaturalearthdata", "ggplot2", "dplyr"))
+
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(ggplot2)
+library(dplyr)
+```
+
+# 1. Plot a Country Polygon
+
+## Step 1: Specify the country
+
+You can change the country name below.
+
+```{r country-map}
+country_name <- "Brazil"   # Change this to any country name
+
+# Download country boundaries
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# Filter for chosen country
+country_sf <- world %>%
+  filter(admin == country_name)
+
+# Plot
+ggplot(data = country_sf) +
+  geom_sf(fill = "lightblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Map of Brazil") # You can change the title
+```
+
+------------------------------------------------------------------------
+
+# 2. Plot Subnational Administrative Regions
+
+We now download first-level administrative units (e.g., states or provinces).
+
+```{r subnational-map}
+# You may need to use the code below to install the package
+# install.packages(
+#   "rnaturalearthhires",
+#   repos = "https://ropensci.r-universe.dev",
+#   type = "source"
+# )
+
+# Download first-level administrative regions
+regions <- ne_states(country = country_name, returnclass = "sf")
+
+# Plot regions
+ggplot(data = regions) +
+  geom_sf(fill = "white", color = "black") +
+  theme_minimal() +
+  labs(title = paste("Administrative Regions of", country_name))
+```
+
+------------------------------------------------------------------------
+
+# 3. Plot Municipalities within a Country
+
+## Step 1: Download the required data
+
+First we need to download the country-specific data. You can access the data from many sources, including official country ones. Here we use [GeoBoundaries](https://www.geoboundaries.org/simplifiedDownloads.html).[^1]
+
+[^1]: Runfola D, Anderson A, Baier H, Crittenden M, Dowker E, Fuhrig S, et al. (2020) geoBoundaries: A global database of political administrative boundaries. PLoS ONE 15(4): e0231866. <https://doi.org/10.1371/journal.pone.0231866>.
+
+Note: ADM0 = country boundaries, ADM1 = first-level administrative units (e.g., states), ADM2 = second-level administrative units (e.g., municipalities).
+
+In the code below, we use Brazil's municipal borders. You can replace the path (`dsn`) and `layer` with your own data.
+
+```{r municipality-map}
+
+# Load the country boundary shapefile (replace with your own path)
+brz_adm2 <- st_read(
+  dsn = "data/geoBoundaries-BRA-ADM2-all", # path of the folder
+  layer = "geoBoundaries-BRA-ADM2_simplified") # name of the shapefile (without .shp extension)
+```
+
+## Step 2: Select region/municipality you want to display
+
+```{r}
+# Select the municipalities you want to plot
+munic <- brz_adm2 %>% 
+  filter(shapeName %in% c("Cavalcante",
+                          "Teresina de Goiás",
+                          "Monte Alegre de Goiás"))
+```
+
+## Step 3: Plot the selected municipalities
+
+```{r}
+# Plot
+ggplot(data = munic) +
+  geom_sf(fill = "lightblue", color = "black") +
+  theme_minimal() +
+  # Change your title name
+  labs(title = "Municipalities in Goiás containing Quilombo Kalunga")
+```
+
+You can also remove the fill color to just show borders.
+
+```{r}
+ggplot(data = munic) +
+  geom_sf(fill = NA, color = "black") +
+  theme_minimal() +
+  # Change your title name
+  labs(title = "Municipalities in Goiás containing Quilombo Kalunga") +
+  # Add municipality name labels
+  theme_minimal() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+```
+
+And add municipality names:
+
+```{r}
+centroids <- st_centroid(munic)
+coords <- st_coordinates(centroids)
+
+munic$X <- coords[,1]
+munic$Y <- coords[,2]
+
+mun_map <- ggplot(data = munic) +
+  geom_sf(fill = NA, color = "black") +
+  theme_minimal() +
+  # Change your title name
+  labs(title = "Municipalities in Goiás containing Quilombo Kalunga") +
+  # Add municipality name labels
+  geom_text(aes(x = X, y = Y, label = shapeName), size = 3) +
+  theme_minimal() +
+  theme(axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+  labs(x = "", y = "") # Remove axis labels
+
+mun_map
+```
+
+# 4. Create an Inset Map (Combine zoomed-in map with "zoomed-out" map)
+
+Often you want:
+
+-   A detailed map of one municipality (zoomed in), AND
+-   A small inset map showing where that municipality is located within the country.
+
+This can be done by creating two maps and combining them.
+
+We will use the `patchwork` package to combine plots.
+
+```{r inset-setup, message=FALSE, warning=FALSE}
+# install.packages("patchwork")  # if needed
+library(patchwork)
+```
+
+## Step 1: Create the Zoomed-In Map
+
+```{r zoomed-map}
+zoom_map <- mun_map +
+  labs(title = "Selected Municipalities")
+```
+
+## Step 2: Create a Context Map
+
+Highlight the selected municipality inside the country.
+
+```{r context-map}
+context_map <- ggplot() +
+  geom_sf(data = country_sf, fill = "gray90", color = "white") +
+  geom_sf(data = munic, fill = "red", color = "black") +
+  theme_void()
+```
+
+## Step 3: Combine the Two Maps
+
+```{r combine-maps}
+final_map <- zoom_map +
+  inset_element(context_map,
+                left = 0.65, bottom = 0.05,
+                right = 0.98, top = 0.4)
+
+final_map
+```
+
+The arguments (`left`, `bottom`, `right`, `top`) control where the inset appears. Adjust them to reposition the small map.
+
+## How do I export the maps?
+
+```{r}
+ggsave(plot = last_plot(), # last plot generated
+       "map.png", # the file path to export your plot to. Here it saves on the current directory. You can run `getwd()` on the console to see what folder you are in.
+       width = 8, height = 6) # change the proportions of your map
+```
+
+------------------------------------------------------------------------
+
+# 5. Add Points with Specific Coordinates
+
+You can add specific locations (e.g., cities, survey sites, events).
+
+## Step 1: Create a data frame of points
+
+```{r add-points}
+# Example coordinates (replace with your own)
+points_df <- data.frame(
+  name = c("Location A", "Location B"),
+  lon = c(-47.8825, -43.1729),
+  lat = c(-15.7942, -22.9068)
+)
+
+# Convert to sf object
+points_sf <- st_as_sf(points_df,
+                      coords = c("lon", "lat"),
+                      crs = 4326)
+
+# Plot map with points
+ggplot() +
+  geom_sf(data = country_sf, fill = "lightgray", color = "black") +
+  geom_sf(data = points_sf, color = "red", size = 3) +
+  theme_minimal() +
+  labs(title = paste("Points in", country_name))
+```
+
+Make sure your coordinates are in longitude (x) and latitude (y) format using the WGS84 coordinate system (EPSG:4326).
+
+------------------------------------------------------------------------
+
+# 6. Shade Regions Based on a Statistic
+
+Suppose you have a statistic for each administrative region (e.g., population, unemployment, rainfall).
+
+## Step 1: Create example data
+
+```{r shaded-map}
+# Create example statistic
+set.seed(123)
+
+regions_data <- regions %>%
+  mutate(stat_value = runif(n(), min = 0, max = 100))
+
+# Plot shaded map
+ggplot(regions_data) +
+  geom_sf(aes(fill = stat_value), color = "white") +
+  scale_fill_viridis_c(option = "plasma") +
+  theme_minimal() +
+  labs(title = paste("Shaded Regions in", country_name),
+       fill = "Statistic")
+```
+
+## Using Your Own Data
+
+If you have a separate dataset with statistics, you must merge it with the spatial object.
+
+Example structure:
+
+``` r
+my_data
+# region_name | value
+```
+
+Merge example:
+
+```{r merge-example, eval=FALSE}
+regions_data <- regions %>%
+  left_join(my_data, by = c("name" = "region_name"))
+```
+
+Then plot using `aes(fill = value)`.
+
+------------------------------------------------------------------------
+
+# Summary
+
+In this tutorial, you learned how to:
+
+-   Download and plot country boundaries.
+-   Plot subnational administrative regions.
+-   Add point data using coordinates.
+-   Shade regions based on a given statistic.
+
+You can adapt this template by:
+
+-   Changing `country_name` and downloading the files specific to your country and administrative region of choice.
+-   Replacing the example coordinates.
+-   Merging real statistical data.
