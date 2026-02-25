@@ -48,7 +48,7 @@ We will use the [AmericasBarometer](http://datasets.americasbarometer.org/databa
 
 ```{r load-data, echo=TRUE}
 # Load data
-df_data <- read.csv("AmericasBarometer_clean.csv")
+df_data <- read.csv("data/AmericasBarometer_clean.csv")
 ```
 
 ```{r table-var-description, echo=FALSE, message=FALSE, warning=FALSE}
@@ -137,7 +137,8 @@ ggplot(plot_data, aes(x = townmeeting_lbl, y = pct, fill = indig_lbl)) +
   geom_text(aes(label = paste0(sprintf("%1.0f", pct), "%")),
             position = position_dodge(width = 0.8),
             vjust = -0.5, size = 3) +
-  scale_y_continuous(limits = c(0, max(plot_data$pct) + 5)) + # Adjust y-axis limits to fit labels
+  # Adjust y-axis limits to fit labels
+  scale_y_continuous(limits = c(0, max(plot_data$pct) + 5)) + 
   labs(
     title = "Town Meeting Participation by Indigeneity",
     x = "Town Meeting Participation (Last Year)",
