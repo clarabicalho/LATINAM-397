@@ -258,6 +258,6 @@ df_clean <- df_data %>%
          parentorg01_lbl, commorg, commorg_lbl, commorg01, commorg01_lbl, womenorg,
          womenorg_lbl, womenorg01,womenorg01_lbl)
 
-write.csv(df_clean, "data/AmericasBarometer_clean.csv", row.names = FALSE)
+write.csv(df_clean, "AmericasBarometer_clean.csv", row.names = FALSE)
 
 
