@@ -1,0 +1,243 @@
+---
+title: "Leveraging AI for Data Visualization in R"
+author: "Valeria Gracia Olvera and Clara Bicalho"
+date: "2026-02-25"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    highlight: tango
+    theme: paper
+---
+
+**Note**: This workshop has been created using AI and LLMs to demonstrate how they can assist in generating R code for data visualization. The code provided is a result of prompting AI models to create various types of plots. The comments in the code are included to explain each step and help you understand how to create similar plots on your own.
+
+# Introduction
+
+This short workshop will show you how:
+
+-   To create plots for:
+
+    -   Describing numerical variables (histogram, boxplot, density)
+
+    -   Describing categorical variables (bar plot, pie chart)
+
+-   AI and Large Language Models (LLM) can assist with writing R code.
+
+    -   To learn to prompt LLMs effectively to generate plotting code.
+
+# Environment set up
+
+We will use the `dplyr`, `tidyr`, and `ggplot2` packages.
+
+```{r libraries, echo=TRUE, message=FALSE, warning=FALSE}
+# Install packages if needed
+# install.packages(c("tidyr","dplyr","ggplot2"))
+
+# Load libraries
+library(dplyr)      # for data manipulation
+library(tidyr)      # for data manipulation and handling missing values
+library(ggplot2)    # for plotting
+library(scales)     # Needed for percent() function
+
+```
+
+# Data
+
+We will use the [AmericasBarometer](http://datasets.americasbarometer.org/database/) survey data (data from 2004–2019 provided by the Latin American Public Opinion Project (LAPOP)). We processed the data to construct variables of interest for this workshop, but the dataset contains many more variables that you can explore on your own. The variables we will use in this workshop are listed in the table below. For more details about the dataset and variable construction, please refer to the code in `R scripts/AmericasBarometer_data-wrangling.R`.
+
+```{r load-data, echo=TRUE}
+# Load data
+df_data <- read.csv("AmericasBarometer_clean.csv")
+```
+
+```{r table-var-description, echo=FALSE, message=FALSE, warning=FALSE}
+# Create a table in knitr to show the variable names and add a description for each variable
+knitr::kable(data.frame(
+  Variable = c("country","country_lbl", "wave", "year", "age","school_yrs", "indig", "indig_lbl", "protest", "protest_lbl","townmeeting","townmeeting_lbl","petitionlocal","petitionlocal_lbl", "polparty1", "polparty1_lbl","pol_ideol", "rightleft", "rightleft_lbl", "parentorg", "parentorg_lbl", "parentorg01", "parentorg01_lbl", "commorg", "commorg_lbl","commorg01", "commorg01_lbl","womenorg","womenorg_lbl","womenorg01","womenorg01_lbl"),
+  Description = c("Country of the respondent (number)",
+                  "Label of country of the respondent",
+                  "Survey wave",
+                  "Year of the survey",
+                  "Age of the respondent",
+                  "Number of years in school (18 = 18+ years of education)",
+                  "Binary variable indicating if the respondent identifies as indigenous (1) or not (0)",
+                  "Label for indigeneity (Yes/No)",
+                  "Binary variable indicating if the respondent participated in a protest in the last year (1 for Yes, 0 for No)",
+                  "Label for protest participation (Yes/No)",
+                  "Binary variable indicating if the respondent attended a city council or town meeting in the last year (1 for Yes, 0 for No)",
+                  "Label for town meeting participation (Yes/No)",
+                  "Binary variable indicating whether the respondent submitted a petition to the municipal government in the last year (1 for Yes, 0 for No)",
+                  "Label for petition petition to municipal government (Yes/No)",
+                  "Binary variable indicating whether the repondend attended meetings of a political party or political organization in the last year (1 for Yes, 0 for No)",
+                  "Label for political party participation (Yes/No)",
+                  "Political ideology of the respondent on a left-right scale (1-10, 1-4 = Left, 5-6 = Middle, 7-10 = Right)",
+                  "Political ideology of the respondent on a left-right scale (1 = Left, 2 = Middle, 3 = Right)",
+                  "Label for political ideology (Left = 1, Middle = 2, Right = 3)",
+                  "Numerical variable indicating parent organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Label of parent organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Binary variable indicating wheter the respondent particpated in a parent organization in the last year (1 for Yes, 0 for No)",
+                  "Label for parent organization participation in the last year (Yes/No)",
+                  "Numerical variable indicating community organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Label of comunity organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Binary variable indicating wheter the respondent particpated in a community organization in the last year (1 for Yes, 0 for No)",
+                  "Label for community organization participation in the last year (Yes/No)",
+                  "Numerical variable indicating women's organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Label of women's organization participation (0 = Never, 1 = Once or twice a year, 2 = Once or twice a month, 3 = Once a week)",
+                  "Binary variable indicating wheter the respondent particpated in a women's organization in the last year (1 for Yes, 0 for No)",
+                  "Label for women's organization participation in the last year (Yes/No)")), 
+  caption = "Variable Descriptions")
+```
+
+## What plots can I create with this data?
+
+**Bar plots** can be used to describe the distribution of categorical variables, such as `indig_lbl` (self-reported indigeneity Yes/No) or `townmeeting_lbl` (town meeting participation Yes/No). **Pie charts** can also be used to show the distribution of categorical variables, such as `rightleft` (political ideology). **Histograms** and **boxplots** can be used to describe the distribution of numerical variables, such as `age`. 
+
+# Create plots using AI and LLMs
+
+## Prompt engineering for R code generation
+
+When asking AI and LLMs to generate R code for plotting, it is important to be specific about what you want. The more details you provide in your prompt, the better the generated code will be. Ask also for comments in the code to explain what each part of the code is doing. This will help you understand the code and learn how to create similar plots on your own.
+
+Be specific about:
+
+-   Dataset name (if using build-in datasets or datasets already loaded in RStudio/R, do not share your data with AI or LLMs if it contains highly sensitive information).
+-   Variables to plot and their types (numerical, categorical).
+-   Type of plot you want (e.g., histogram, scatter plot, boxplot).
+-   Any specific aesthetics (e.g., color, size, labels).
+-   The purpose of the plot (e.g., to show distribution, to compare groups, to show relationships).
+
+### Example: Town meeting participation by self-reported indigeneity
+
+We can create a plot that contains the percentage of people who participated in town meetings in the last year, by self-reported indigeneity. This will allow us to compare town meeting participation between those who identify as indigenous and those who do not.
+
+This is how you can prompt an AI or LLM to generate the R code for this plot:
+
+*Provide me with the R code to create a bar plot using the dataset `df_data` already loaded in RStudio, for the variable town meeting participation in the last year (`townmeeting_lbl`), which is a dichotomous variable with "Yes" and "No" filled by self-reported indigeneity (`indig_lbl`), also a dichotomous "Yes"/"No" variable. Remove NAs from both variables before plotting, and add labels showing the percentage above each bar, we want the percentages to be calculated by self-reported indigeneity and be rounded to 0 decimals. Use the ggplot2 package.*
+
+Here is the code generated by the AI/LLM based on the prompt above, with comments explaining each step:
+
+```{r}
+# 1. Filter out NAs from the required columns
+# Using drop_na() is an efficient way to remove rows with NA in specified columns
+df_filtered <- df_data %>%
+  drop_na(townmeeting_lbl, indig_lbl)
+
+# 2. Calculate percentages within each 'indig_lbl' group
+plot_data <- df_filtered %>%
+  count(indig_lbl, townmeeting_lbl) %>% # Count occurrences of each combination
+  group_by(indig_lbl) %>% # Group by indigeneity to calculate percentages within each group
+  mutate(pct = prop.table(n) * 100) %>% # Calculate percentage
+  ungroup() # Ungroup for subsequent operations
+
+# 3. Create the bar plot with percentage labels
+ggplot(plot_data, aes(x = townmeeting_lbl, y = pct, fill = indig_lbl)) +
+  geom_col(position = position_dodge(width = 0.8)) + # Use geom_col as we pre-calculated y values (percentages)
+  # Add percentage labels above each bar
+  geom_text(aes(label = paste0(sprintf("%1.0f", pct), "%")),
+            position = position_dodge(width = 0.8),
+            vjust = -0.5, size = 3) +
+  scale_y_continuous(limits = c(0, max(plot_data$pct) + 5)) + # Adjust y-axis limits to fit labels
+  labs(
+    title = "Town Meeting Participation by Indigeneity",
+    x = "Town Meeting Participation (Last Year)",
+    y = "Percentage",
+    fill = "Self-Reported Indigeneity"
+  ) +
+  theme_minimal() # Use a clean theme
+
+```
+
+### Example: Pie chart of frequency of community organization participation
+
+We can create a pie chart to show the distribution of the frequency of community organization participation (`commorg_lbl`). This will allow us to see how many people participate in community organizations at different frequencies (e.g., never, once or twice a year, once or twice a month, once a week).
+
+This is how you can prompt an AI or LLM to generate the R code for this plot:
+
+*Provide me with the R code to create a pie chart using the dataset `df_data` already loaded in RStudio, for the variable frequency of community organization participation (`commorg_lbl`), which is a categorical variable with labels "Never", "Once or twice a year", "Once or twice a month", "Once a week". Add labels of the percentages on the plot. Remove NAs from the variable before plotting. Use the ggplot2 package. Add comments in the code to explain each step.*
+
+```{r pie-chart, echo=TRUE, message=FALSE, warning=FALSE}
+# 1. Prepare data: Remove NAs, calculate frequencies, and set order
+plot_data <- df_data %>%
+  # Remove rows with NA in commorg_lbl
+  filter(!is.na(commorg_lbl)) %>%                
+  # Count the occurrences of each label
+  count(commorg_lbl) %>%                         
+  # Calculate the percentage for each group
+  mutate(percentage = n / sum(n),
+         # Order the categories logically
+         commorg_lbl = factor(commorg_lbl, levels = c("Never", 
+                                                      "Once or twice a year", 
+                                                      "Once or twice a month", 
+                                                      "Once a week"))) %>%
+  # Arrange by factor order to ensure consistent plotting
+  arrange(desc(commorg_lbl))
+
+# 2. Create the pie chart
+ggplot(plot_data, aes(x = "", y = percentage, fill = commorg_lbl)) +
+  # Create a stacked bar chart
+  geom_col(color = "white") + 
+  # Transform bar chart into a pie chart
+  coord_polar(theta = "y") +
+  # Add percentage labels
+  geom_text(aes(label = percent(percentage, accuracy = 0.1)), 
+            position = position_stack(vjust = 0.5)) +
+  # Clean up the theme (remove axes, gridlines)
+  theme_void() +
+  # Add title and customize legend
+  labs(title = "Frequency of Community Organization Participation",
+       fill = "Participation Frequency") +
+  # Optional: Customize colors
+  scale_fill_brewer(palette = "Set3")
+```
+
+
+### Example: Boxplot of age by political ideology
+
+We can create a boxplot to compare the distribution of age across different political ideologies (`rightleft_lbl`) (left, middle, right). This will allow us to see if there are differences in age distribution among people with different political ideologies.
+
+This is how you can prompt an AI or LLM to generate the R code for this plot:
+
+*Provide me with the R code to create a boxplot using the dataset `df_data` already loaded in RStudio, for the variable age (numerical) by political ideology label (`rightleft_lbl`, categorical with labels "left", "middle", "right"). Remove NAs from both variables before plotting.  The boxplot should have light blue boxes with black borders. Use the ggplot2 package. Add comments in the code to explain each step.*
+
+```{r boxplot, echo=TRUE, message=FALSE, warning=FALSE}
+# 1. Remove rows with missing values in either 'age' or 'rightleft_lbl'
+df_clean <- df_data[!is.na(df_data$age) & !is.na(df_data$rightleft_lbl), ]
+
+# 2. Ensure 'rightleft_lbl' is treated as a factor (categorical variable)
+df_clean$rightleft_lbl <- factor(df_clean$rightleft_lbl,
+                                 levels = c("left", "middle", "right"))
+
+# 3. Create the boxplot
+ggplot(df_clean, aes(x = rightleft_lbl, y = age)) +
+  geom_boxplot(
+    fill = "lightblue",   # Light blue fill color for boxes
+    color = "black"       # Black border around boxes
+  ) +
+  labs(
+    title = "Boxplot of Age by Political Ideology",
+    x = "Political Ideology",
+    y = "Age"
+  ) +
+  theme_minimal()
+```
+
+## Exercise: Create your own plot
+
+Now it's your turn! Use the dataset and the variables described above to create a plot of your choice. You can choose any type of plot (e.g., histogram, boxplot, bar plot, pie chart) and any combination of variables. Remember to be specific in your prompt if you are using AI or LLMs to generate the code, and ask for comments in the code to help you understand it better.
+
+Here are some ideas for plots you can create:
+-   A histogram/density plot of age to show the distribution of ages in the sample.
+-   A bar plot showing the percentage of people who participated in protests in the last year, by political ideology.
+-   A pie chart showing the distribution of years of education in the sample.
+
+As you create your plot, think about the following: 
+
+-   What is the purpose of your plot? What do you want to communicate with it?
+-   What type of plot is best suited for your data and the message you want to convey?
+
+**Once you have created your plot, share it with the group and explain your choices in terms of the type of plot, the variables you chose to visualize, and how you prompted AI or LLMs to generate the code. Briefly explain what is the information that your plot is showing and how it can be interpreted**.
+
+# Conclusion
+
+In this workshop, we have explored various types of plots to visualize numerical and categorical variables. We also discussed how to effectively prompt AI and LLMs to generate R code for plotting. Visualization is a powerful tool for understanding data and communicating insights, and mastering these techniques will enhance your data analysis skills. Remember that the key to creating effective visualizations is to be clear about your goals and to choose the right type of plot for your data and message.
