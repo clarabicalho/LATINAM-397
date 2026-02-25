@@ -2,7 +2,7 @@
 #------------------------------------------------------------------------------#
 #           Workshop LATAM 397 - AmericasBarometer data wrangling              #
 #                                                                              #
-# Authors:                                                                      #
+# Authors:                                                                     #
 #   Valeria Gracia Olvera, M.Sc., <vgracia@stanford.edu>                       #
 #   Clara Bicalho Maia Correia, PhD, <clara.bicalho@stanford.edu>              #
 #                                                                              #

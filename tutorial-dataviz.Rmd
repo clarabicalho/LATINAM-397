@@ -32,13 +32,13 @@ We will use the `dplyr`, `tidyr`, and `ggplot2` packages.
 
 ```{r libraries, echo=TRUE, message=FALSE, warning=FALSE}
 # Install packages if needed
-# install.packages(c("tidyr","dplyr","ggplot2"))
+# install.packages(c("tidyr","dplyr","ggplot2","scales"))
 
 # Load libraries
 library(dplyr)      # for data manipulation
 library(tidyr)      # for data manipulation and handling missing values
 library(ggplot2)    # for plotting
-library(scales)     # Needed for percent() function
+library(scales)     # for percent() function
 
 ```
 
